@@ -1,5 +1,5 @@
 [ENTRY]
-CATEGORY=Settings
+CATEGORY=Terminal
 NAME=Wi-Fi Toggle
 DESCRIPTION=Enable or disable the USB Wi-Fi dongle (350b:9101)
 COMMAND=/home/player/.local/bin/wifi-toggle.sh
