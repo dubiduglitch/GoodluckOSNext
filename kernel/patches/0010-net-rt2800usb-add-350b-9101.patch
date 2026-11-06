@@ -1,0 +1,21 @@
+From: goodluckOS <local>
+Subject: [PATCH] net: rt2800usb: add ZTopInc 350b:9101 (RT3070-class)
+Date: Fri, 06 Nov 2026 21:00:00 +0000
+
+USB Wi-Fi dongle 350b:9101 is RT3070-class (vendor-specific),
+needs explicit device ID to match rt2800usb driver.
+---
+ drivers/net/wireless/ralink/rt2x00/rt2800usb.c | 2 ++
+ 1 file changed, 2 insertions(+)
+
+diff --git a/drivers/net/wireless/ralink/rt2x00/rt2800usb.c b/drivers/net/wireless/ralink/rt2x00/rt2800usb.c
+index 0000000..1111111 100644
+--- a/drivers/net/wireless/ralink/rt2x00/rt2800usb.c
++++ b/drivers/net/wireless/ralink/rt2x00/rt2800usb.c
+@@ -810,6 +810,8 @@ static const struct usb_device_id rt2800usb_device_table[] = {
+ 	/* Askey */
+ 	{ USB_DEVICE(0x1690, 0x0740) },
++	/* ZTopInc */
++	{ USB_DEVICE(0x350b, 0x9101) },
+ 	/* ASUS */
+ 	{ USB_DEVICE(0x0b05, 0x1731) },

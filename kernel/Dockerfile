@@ -27,7 +27,7 @@ WORKDIR /src/linux
 RUN make sunxi_defconfig
 RUN ./scripts/config --enable CONFIG_ARM_APPENDED_DTB && \
     ./scripts/config --enable CONFIG_ARM_ATAG_DTB_COMPAT && \
-    ./scripts/config --set-str CONFIG_CMDLINE "root=/dev/mmcblk0p1 rootfstype=ext4 rootwait rw init=/sbin/init coherent_pool=4m loglevel=8" && \
+    ./scripts/config --set-str CONFIG_CMDLINE "root=/dev/mmcblk0p1 rootfstype=ext4 rootwait rw init=/sbin/init coherent_pool=4m loglevel=0" && \
     ./scripts/config --enable CONFIG_CMDLINE_FORCE && \
     ./scripts/config --enable CONFIG_EXT4_FS && \
     ./scripts/config --enable CONFIG_DEVTMPFS && \
@@ -130,6 +130,16 @@ RUN ./scripts/config --enable CONFIG_ARM_APPENDED_DTB && \
     ./scripts/config --enable CONFIG_NLS && \
     ./scripts/config --enable CONFIG_NLS_UTF8 && \
     ./scripts/config --set-str CONFIG_EXFAT_DEFAULT_IOCHARSET "utf8" && \
+    ./scripts/config --enable CONFIG_WIRELESS && \
+    ./scripts/config --enable CONFIG_CFG80211 && \
+    ./scripts/config --enable CONFIG_MAC80211 && \
+    ./scripts/config --enable CONFIG_WLAN && \
+    ./scripts/config --enable CONFIG_RT2X00 && \
+    ./scripts/config --enable CONFIG_RT2800USB && \
+    ./scripts/config --enable CONFIG_RT2800USB_LEGACY && \
+    ./scripts/config --enable CONFIG_RT2800USB_SOC && \
+    ./scripts/config --enable CONFIG_RT28XXU && \
+    ./scripts/config --enable CONFIG_NET_VENDOR_RALINK && \
     make olddefconfig
 
 # Build the vanilla kernel - Docker will cache this long step permanently
