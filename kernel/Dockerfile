@@ -130,16 +130,6 @@ RUN ./scripts/config --enable CONFIG_ARM_APPENDED_DTB && \
     ./scripts/config --enable CONFIG_NLS && \
     ./scripts/config --enable CONFIG_NLS_UTF8 && \
     ./scripts/config --set-str CONFIG_EXFAT_DEFAULT_IOCHARSET "utf8" && \
-    ./scripts/config --enable CONFIG_WIRELESS && \
-    ./scripts/config --enable CONFIG_CFG80211 && \
-    ./scripts/config --enable CONFIG_MAC80211 && \
-    ./scripts/config --enable CONFIG_WLAN && \
-    ./scripts/config --enable CONFIG_RT2X00 && \
-    ./scripts/config --enable CONFIG_RT2800USB && \
-    ./scripts/config --enable CONFIG_RT2800USB_LEGACY && \
-    ./scripts/config --enable CONFIG_RT2800USB_SOC && \
-    ./scripts/config --enable CONFIG_RT28XXU && \
-    ./scripts/config --enable CONFIG_NET_VENDOR_RALINK && \
     make olddefconfig
 
 # Build the vanilla kernel - Docker will cache this long step permanently
