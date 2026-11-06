@@ -56,7 +56,7 @@ ENTRY_EXTENSIONS=n64;v64;z64;zip;7z
 ENTRY_ICONS_DIRECTORIES=/media/external/N64/icons;/home/player/roms/n64/icons
 ART_DIRECTORIES=/media/external/N64/icons;/home/player/roms/n64/icons
 DEFAULT_ICON=/home/player/icons/nintendo_64.png
-COMMAND=retroarch -L /usr/lib/libretro/parallel_n64_32b_libretro.so %s
+COMMAND=retroarch -L /home/player/cores/mupen64plus_32b_lima_libretro.so %s
 
 [ARCHIVE]
 NAME=Virtual Boy
