@@ -12,7 +12,7 @@ diff --git a/drivers/net/wireless/ralink/rt2x00/rt2800usb.c b/drivers/net/wirele
 index 0000000..1111111 100644
 --- a/drivers/net/wireless/ralink/rt2x00/rt2800usb.c
 +++ b/drivers/net/wireless/ralink/rt2x00/rt2800usb.c
-@@ -810,6 +810,8 @@ static const struct usb_device_id rt2800usb_device_table[] = {
+@@ -810,4 +810,6 @@ static const struct usb_device_id rt2800usb_device_table[] = {
  	/* Askey */
  	{ USB_DEVICE(0x1690, 0x0740) },
 +	/* ZTopInc */
