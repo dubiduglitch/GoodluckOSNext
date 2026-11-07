@@ -27,7 +27,7 @@ WORKDIR /src/linux
 RUN make sunxi_defconfig
 RUN ./scripts/config --enable CONFIG_ARM_APPENDED_DTB && \
     ./scripts/config --enable CONFIG_ARM_ATAG_DTB_COMPAT && \
-    ./scripts/config --set-str CONFIG_CMDLINE "root=/dev/mmcblk0p1 rootfstype=ext4 rootwait rw init=/sbin/init coherent_pool=4m loglevel=0" && \
+    ./scripts/config --set-str CONFIG_CMDLINE "root=/dev/mmcblk0p1 rootfstype=ext4 rootwait rw init=/sbin/init coherent_pool=4m loglevel=0 vt.global_cursor_default=0" && \
     ./scripts/config --enable CONFIG_CMDLINE_FORCE && \
     ./scripts/config --enable CONFIG_EXT4_FS && \
     ./scripts/config --enable CONFIG_DEVTMPFS && \
