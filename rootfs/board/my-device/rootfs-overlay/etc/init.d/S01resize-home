@@ -11,7 +11,6 @@ MOUNT_POINT=/home/player
 REQUEST_FLAG=/etc/player-flags/.home_resize_requested
 STATUS_FILE=/etc/player-flags/.home_resize_status
 HOME_BACKUP=/tmp/home_backup.tar
-CONSOLE=/dev/tty1
 LED_PATH=/sys/class/leds/blue:status/brightness
 LOG=/var/log/resize-home.log
 
@@ -23,8 +22,8 @@ is_number() {
 }
 
 log() {
+    # File only: writing to the panel console would paint text over the splash.
     echo "$@" >> "$LOG"
-    ( timeout 1 sh -c "echo \"\$1\" > \"$CONSOLE\"" _ "$*" ) 2>/dev/null &
 }
 
 : > "$LOG"
