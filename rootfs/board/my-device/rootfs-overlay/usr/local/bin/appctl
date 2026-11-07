@@ -36,7 +36,8 @@ PATH=/sbin:/bin:/usr/sbin:/usr/bin
 RUN_USER=player
 LAUNCHER_CMD=/home/player/.local/launcher.sh
 AUTOLAUNCH=/home/player/autolaunch
-CONSOLE=/dev/tty1                 # where the "loading" screen is drawn
+CONSOLE=/dev/tty1                 # text console, fallback for the loading screen
+SPLASH=/home/player/.local/share/goodluckos/splash-launch.png  # launch splash
 RUN_DIR=/run/appd                 # FIFO + pidfile (use /dev/shm/appd if no /run)
 LOG_DIR=/dev/shm/application
 APP_LOG=$LOG_DIR/application.log
@@ -168,35 +169,14 @@ start_launcher() {
 }
 
 show_loading() {
+    # Draw the launch splash on the framebuffer (the app takes the display over next).
+    if [ -f "$SPLASH" ] && command -v fbv >/dev/null 2>&1; then
+        fbv -f "$SPLASH" </dev/null >/dev/null 2>&1 && return 0
+    fi
+    # Fallback: short text when the splash or fbv is missing.
     {
         printf '\033[2J\033[H\033[?25l'
-        cat <<'EOF'
-
-
-
-
-                    @@@@@@                     +@@@@@
-                   :@-:  @@@.                @@@% --@@
-                   @@----- @@@             @@@  -----@
-                   @@------ :@@@@@@@@@@@@@@@@ -------@:
-                   @*---:  @@@@@@@@@@@@@@@@@@@   ----@:
-                   @@-: =@@@@@@@@@@@@@@@@@@@@@@@@  --@
-                   @@ #@@@@@@@@@@@@@@@@@@@@@@@@@@@@  @
-                     @@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@-      @@*
-                    @@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@* =@@@@@@@@@
-                   @@@@@@  @@:  @@@@@@@@@@  :@@  @@@@ =@@@@@@@@@@@
-                   @@@@@@@@@@@@# @@@@@@@@ @@@@@@@@@@@ @@ #@@ @@ @@
-                   @@@+  @@@@@@@@@@@@@@@@@@@@@@@+  @@* % +@@ @@ @
-                   @@@@@@@@@@@@@@@@----@@@@@@@@@@@@@@@@ @:     %
-                   @@@@@@@@@@@ @@@@@  @@@@@ @@@@@@@@@@# @@@@@@@@
-                    @@+ @@@@@@@    @@@@   @@@@@@@  @@@ @@@@@@@@@
-                           -@@      @       ..             .
-             +@@    .@@@@@@   .@@@@   @@@@@@@ *@@ @@@  #@@  @@@@@@
-             @@@   :@@   @@@  @@ @@  .@@   @@ @@@.@@@@ @@@ @@
-             @@.   @@@ . @@@ @@- @@. @@@  +@@ @@ @@@=@@@@.@@@ +@@@
-             @@    +@@@@@@@ @@@@@@@@ @@@@@@@  @@ @@@ @@@@ .@@@@@@@
-            @@@@@@   +@@:  @@@   @@@ @@@@%   @@@ @@   @@@   -@@-
-EOF
+        printf '\n\n\n   goodluckOS\n   loading %s ...\n' "${1##*/}"
     } >"$CONSOLE" 2>/dev/null
 }
 
