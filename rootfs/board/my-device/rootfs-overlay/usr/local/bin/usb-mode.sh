@@ -6,9 +6,14 @@
 # The mode is kept across reboots. Setting a mode restarts the USB gadget, also when it is
 # the current one, so a failed switch can be retried.
 
-MODE_FILE=/etc/player-flags/usb-mode
+MODE_FILE=/etc/player-flags/usb-mode   # persistent, root-owned for writes
+PUBLIC_FILE=/run/usb-mode              # world-readable mirror for the UI
 
-cur=$(cat "$MODE_FILE" 2>/dev/null)
+# /etc/player-flags is 0750 and owned by root on some images, so the player
+# user (Kennel) cannot read the persistent file and would report MTP even when
+# the gadget is on the network. Read the mirror first, then the real file.
+cur=$(cat "$PUBLIC_FILE" 2>/dev/null)
+[ "$cur" = network ] || cur=$(cat "$MODE_FILE" 2>/dev/null)
 [ "$cur" = network ] || cur=mtp
 
 case "$1" in
@@ -18,4 +23,6 @@ case "$1" in
 esac
 
 echo "$new" > "$MODE_FILE"
+echo "$new" > "$PUBLIC_FILE" 2>/dev/null
+chmod 644 "$PUBLIC_FILE" 2>/dev/null
 /etc/init.d/S30usb-gadget restart

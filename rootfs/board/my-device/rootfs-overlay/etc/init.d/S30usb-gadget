@@ -9,6 +9,12 @@ LOG=/tmp/usb-gadget.log
 MODE=$(cat /etc/player-flags/usb-mode 2>/dev/null)
 [ "$MODE" = network ] || MODE=mtp
 
+# Mirror the mode somewhere world-readable: the player user cannot read
+# /etc/player-flags on images where that directory is 0750 root:root, which
+# made Kennel show MTP while the gadget was really on the network.
+echo "$MODE" > /run/usb-mode 2>/dev/null
+chmod 644 /run/usb-mode 2>/dev/null
+
 # Rebuild the gadget with the serial console alone (MTP or the network did not work)
 serial_only() {
     echo "$1: serial only" >> $LOG
