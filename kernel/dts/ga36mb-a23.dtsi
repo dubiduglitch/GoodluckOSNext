@@ -74,3 +74,42 @@
     pinctrl-0 = <&usb0_id_det_pin>;
     usb0_vbus-supply = <&reg_drivevbus>;
 };
+
+&cpu0 {
+    operating-points-v2 = <&cpu0_opp_table>;
+};
+
+&cpu1 {
+    operating-points-v2 = <&cpu0_opp_table>;
+};
+
+cpu0_opp_table: opp-table-cpu {
+    compatible = "operating-points-v2";
+    opp-shared;
+
+    opp-408000000 {
+        opp-hz = /bits/ 64 <408000000>;
+        opp-microvolt = <1200000>;
+        clock-latency-ns = <244144>;
+    };
+    opp-600000000 {
+        opp-hz = /bits/ 64 <600000000>;
+        opp-microvolt = <1200000>;
+        clock-latency-ns = <244144>;
+    };
+    opp-768000000 {
+        opp-hz = /bits/ 64 <768000000>;
+        opp-microvolt = <1200000>;
+        clock-latency-ns = <244144>;
+    };
+    opp-912000000 {
+        opp-hz = /bits/ 64 <912000000>;
+        opp-microvolt = <1250000>;
+        clock-latency-ns = <244144>;
+    };
+    opp-1008000000 {
+        opp-hz = /bits/ 64 <1008000000>;
+        opp-microvolt = <1300000>;
+        clock-latency-ns = <244144>;
+    };
+};
