@@ -1,31 +1,39 @@
 # goodluckOSNext
 
-Fork personnel de [goodluckOS](https://github.com/CodeZombie/goodluckOS) par [dubiduglitch](https://github.com/dubiduglitch).
+Personal fork of [goodluckOS](https://github.com/CodeZombie/goodluckOS) by [dubiduglitch](https://github.com/dubiduglitch).
 
-Ce n'est **pas** une distribution officielle. C'est un fork personnel contenant des modifications, des ports de jeux et des expérimentations faites par moi-même. Il n'est pas affilié au projet original et n'a pas vocation à le remplacer.
+This is **not** an official distribution. It is a personal fork for my own GA36-MB console. It is not affiliated with the original project and does not intend to replace it.
 
-## Ce qui est inclus
+## Credits
 
-- **goodluckOS** (base système) — sous licence GPL-2.0, provenant de [nyakaspeter/goodluckOS](https://github.com/nyakaspeter/goodluckOS) / [CodeZombie/goodluckOS](https://github.com/CodeZombie/goodluckOS)
-- **Patches kernel** : Mali-400, framebuffer, CPU OPP jusqu'à 1,008 GHz, détection casque, etc.
-- **Ports de jeux** : N64, PSP, GBA, SNES, PSX, Dreamcast, NES, GB, GBA, MegaDrive, Arcade, et bien d'autres (via [ga36-ports](https://github.com/rincewindcz/ga36-ports))
-- **Stardew Valley** (version binaire de [nyakaspeter/glOSports-stardew](https://github.com/alvesmaicon/goodluckOS-mali-driver) / source de [nyakaspeter/glOSports-stardew-valley](https://github.com/nyakaspeter/goodluckOS-mali-driver))
-- **Mediabox** (musique, livres, vidéos)
+| Component | Source | License |
+|-----------|--------|---------|
+| goodluckOS (base system) | [CodeZombie/goodluckOS](https://github.com/CodeZombie/goodluckOS) | GPL-2.0 |
+| Mali-400 kernel driver & userspace | [nyakaspeter/goodluckOS-mali-driver](https://github.com/nyakaspeter/goodluckOS-mali-driver) | GPL-2.0 / ARM proprietary |
+| GTA III port | [nyakaspeter/glOSports-gta3-pc](https://github.com/nyakaspeter/goodluckOS-mali-driver) | MIT |
+| GTA Vice City port | [nyakaspeter/glOSports-gtavc-pc](https://github.com/nyakaspeter/goodluckOS-mali-driver) | MIT |
+| GTA Liberty City Stories port | [nyakaspeter/glOSports-gtalcs-pc](https://github.com/nyakaspeter/goodluckOS-mali-driver) | MIT |
+| GTA Vice City Stories port | [nyakaspeter/glOSports-gtavcs-psp](https://github.com/nyakaspeter/goodluckOS-mali-driver) | MIT |
+| Hotline Miami port | [nyakaspeter/glOSports-hotlinemiami](https://github.com/nyakaspeter/goodluckOS-mali-driver) | MIT |
+| Hotline Miami 2 port | [nyakaspeter/glOSports-hotlinemiami2](https://github.com/nyakaspeter/goodluckOS-mali-driver) | MIT |
+| Kennel launcher | [rincewindcz/kennel](https://github.com/rincewindcz/kennel) | MIT |
+| Stardew Valley (source) | [igol23/glOSports-stardew-valley](https://github.com/igol23/glOSports-stardew-valley) | GPL-2.0 |
+| Stardew Valley (binary port) | [alvesmaicon/glOSports-stardew](https://github.com/alvesmaicon/goodluckOS-mali-driver) | MIT |
+| Mediabox | [lw10a/Mediabox-goodluckOS](https://github.com/lw10a/Mediabox-goodluckOS) | AGPL-3.0 |
+| Arcade & other ports | [rincewindcz/ga36-ports](https://github.com/rincewindcz/ga36-ports) | MIT |
 
-## Comment flasher
-
-L'image finale se trouve dans les releases GitHub ou dans le dossier `out/` après build :
+## How to flash
 
 ```bash
 zstd -d -c goodluckOSNext.img.zst | sudo dd of=/dev/sdX bs=4M status=progress
 ```
 
-Remplacez `/dev/sdX` par votre carte SD.
+Replace `/dev/sdX` with your SD card device.
 
 ## Build
 
-Nécessite Docker. Voir `BUILD.md`.
+Requires Docker. See `BUILD.md`.
 
 ---
 
-> ⚠️ Ce projet est un fork personnel. Aucune garantie de fonctionnement. Utilisez à vos propres risques.
+> ⚠️ This is a personal fork. Use at your own risk. Not affiliated with the original goodluckOS project.
