@@ -2,7 +2,7 @@
 
 Fork personnel de [goodluckOS](https://github.com/CodeZombie/goodluckOS) par [dubiduglitch](https://github.com/dubiduglitch).
 
-Ce repo est un fork personnel. Il n'est pas affilié au projet officiel goodluckOS et n'a pas vocation à le remplacer.
+This repo is a personal fork. It is not affiliated with the official goodluckOS project and does not aim to replace it.
 
 ---
 
@@ -15,7 +15,7 @@ Ce firmware est destiné aux consoles portables **GA36-MB V1.2-20260416** (souve
 | SoC | Allwinner A23 (ARM Cortex-A7) |
 | GPU | Mali-400 MP2 |
 | RAM | 512 MB |
-| Écran | 640 x 480 |
+| Écran | 640 × 480 |
 | Stockage | Carte microSD (TF-1 principale, TF-2 optionnelle selon les modèles) |
 | Connectivité | USB OTG (gadget : série, MTP, réseau) |
 
@@ -23,7 +23,7 @@ Ce matériel est vendu sous diverses marques (R36S clone, Zekko, Tekko, etc.). A
 
 ---
 
-## Composants logiciels
+## Composants
 
 | Composant | Auteur | Licence | Lien |
 |-----------|--------|---------|------|
@@ -66,4 +66,4 @@ Requires Docker. See `BUILD.md`.
 
 > This is a personal fork. No warranty. Use at your own risk. Not affiliated with the official goodluckOS project.
 EOF
-echo "README overwritten with console info"
+echo "README overwritten in English"
