@@ -1,0 +1,66 @@
+name: Build goodluckOSNext
+
+on:
+  push:
+    branches: [ main ]
+  workflow_dispatch:
+
+jobs:
+  build-kernel:
+    runs-on: ubuntu-latest
+    timeout-minutes: 360
+    steps:
+      - uses: actions/checkout@v4
+      - name: Build kernel
+        run: cd kernel && ./build.sh
+      - name: Upload kernel image
+        uses: actions/upload-artifact@v4
+        with:
+          name: android-boot-img
+          path: kernel/out/*.img
+
+  build-rootfs:
+    runs-on: ubuntu-latest
+    timeout-minutes: 360
+    needs: [build-kernel]
+    steps:
+      - uses: actions/checkout@v4
+      - name: Build rootfs
+        run: cd rootfs && sudo docker compose run --build --rm goodluck-builder bash -c "./scripts/configure.sh && make -C buildroot O=/src/out BR2_EXTERNAL=/src"
+      - name: Upload rootfs
+        uses: actions/upload-artifact@v4
+        with:
+          name: rootfs-tar
+          path: rootfs/out/images/rootfs.tar
+
+  build-home:
+    runs-on: ubuntu-latest
+    timeout-minutes: 120
+    needs: [build-kernel]
+    steps:
+      - uses: actions/checkout@v4
+      - name: Build home overlay
+        run: cd home && ./build.sh
+      - name: Upload home overlay
+        uses: actions/upload-artifact@v4
+        with:
+          name: home-tar
+          path: home/out/home.tar
+
+  build-image:
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    needs: [build-kernel, build-rootfs, build-home]
+    steps:
+      - uses: actions/checkout@v4
+      - name: Download artifacts
+        uses: actions/download-artifact@v4
+        with:
+          path: build-output
+      - name: Assemble image
+        run: cd image && ./build.sh
+      - name: Upload final image
+        uses: actions/upload-artifact@v4
+        with:
+          name: goodluckOSNext-image
+          path: image/out/*.img
