@@ -1,33 +1,33 @@
 # goodluckOSNext
 
-Fork personnel de [goodluckOS](https://github.com/CodeZombie/goodluckOS) par [dubiduglitch](https://github.com/dubiduglitch).
+Personal fork of [goodluckOS](https://github.com/CodeZombie/goodluckOS) by [dubiduglitch](https://github.com/dubiduglitch).
 
 This repo is a personal fork. It is not affiliated with the official goodluckOS project and does not aim to replace it.
 
 ---
 
-## Console cible
+## Target Console
 
-Ce firmware est destiné aux consoles portables **GA36-MB V1.2-20260416** (souvent vendues comme clones "R36S").
+This firmware is designed for portable **GA36-MB V1.2-20260416** consoles (often sold as "R36S" clones).
 
-| Caractéristique | Détail |
-|-----------------|--------|
+| Feature | Detail |
+|---------|--------|
 | SoC | Allwinner A23 (ARM Cortex-A7) |
 | GPU | Mali-400 MP2 |
 | RAM | 512 MB |
-| Écran | 640 × 480 |
-| Stockage | Carte microSD (TF-1 principale, TF-2 optionnelle selon les modèles) |
-| Connectivité | USB OTG (gadget : série, MTP, réseau) |
+| Screen | 640 × 480 |
+| Storage | microSD card (TF-1 primary, TF-2 optional on some models) |
+| Connectivity | USB OTG (gadget: serial, MTP, network) |
 
-Ce matériel est vendu sous diverses marques (R36S clone, Zekko, Tekko, etc.). Aucun pilote officiel n'est fourni par le constructeur pour ce matériel.
+This hardware is sold under various brands (R36S clone, Zekko, Tekko, etc.). No official driver is provided by the manufacturer for this hardware.
 
-Plus d'infos : [R36S Clones - handhelds.wiki](https://handhelds.wiki/R36S_Clones)
+More info: [R36S Clones - handhelds.wiki](https://handhelds.wiki/R36S_Clones)
 
 ---
 
-## Composants
+## Components
 
-| Composant | Auteur | Licence | Lien |
+| Component | Author | License | Link |
 |-----------|--------|---------|------|
 | goodluckOS (base) | CodeZombie | GPL-2.0 | https://github.com/CodeZombie/goodluckOS |
 | Mali-400 driver (kernel + user-space) | nyakaspeter | GPL-2.0 / ARM proprietary | https://github.com/nyakaspeter/goodluckOS-mali-driver |
