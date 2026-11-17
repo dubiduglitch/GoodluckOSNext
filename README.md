@@ -2,7 +2,7 @@
 
 Fork personnel de [goodluckOS](https://github.com/CodeZombie/goodluckOS) par [dubiduglitch](https://github.com/dubiduglitch).
 
-Ce repo est un **fork personnel**. Il n'est pas affilié au projet officiel goodluckOS et n'a pas vocation à le remplacer.
+This repo is a personal fork. It is not affiliated with the official goodluckOS project and does not aim to replace it.
 
 ---
 
@@ -20,6 +20,8 @@ Ce firmware est destiné aux consoles portables **GA36-MB V1.2-20260416** (souve
 | Connectivité | USB OTG (gadget : série, MTP, réseau) |
 
 Ce matériel est vendu sous diverses marques (R36S clone, Zekko, Tekko, etc.). Aucun pilote officiel n'est fourni par le constructeur pour ce matériel.
+
+Plus d'infos : [R36S Clones - handhelds.wiki](https://handhelds.wiki/R36S_Clones)
 
 ---
 
@@ -64,17 +66,6 @@ Requires Docker. See `BUILD.md`.
 
 ---
 
-## Awesome goodluckOS
-
-Ressources communautaires et ressources officielles :
-
-- [goodluckOS official docs](https://github.com/CodeZombie/goodluckOS/blob/main/README.md) — documentation officielle du projet goodluckOS
-- [goodluckOS SOFTWARE.md](https://github.com/CodeZombie/goodluckOS/blob/main/SOFTWARE.md) — liste des ports et logiciels disponibles
-- [goodluckOS-mali-driver README](https://github.com/nyakaspeter/goodluckOS-mali-driver/blob/main/README.md) — documentation du pilote Mali-400 et des ports de jeux
-- [ga36.genserek.net](https://ga36.genserek.net/) — ports et applications pour goodluckOS par rincewindcz
-
----
-
-> This is a **personal fork**. No warranty. Use at your own risk. Not affiliated with the official goodluckOS project.
+> This is a personal fork. No warranty. Use at your own risk. Not affiliated with the official goodluckOS project.
 EOF
-echo "README overwritten in clean English"
+echo "README overwritten in English"
