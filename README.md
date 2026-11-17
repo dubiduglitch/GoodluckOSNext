@@ -1,15 +1,15 @@
 # goodluckOSNext
 
-Personal fork of goodluckOS by dubiduglitch.
+Fork personnel de [goodluckOS](https://github.com/CodeZombie/goodluckOS) par [dubiduglitch](https://github.com/dubiduglitch).
 
-This repository is a personal fork. It is not affiliated with the official goodluckOS project and does not aim to replace it.
+Ce repo est un fork personnel. Il n'est pas affilié au projet officiel goodluckOS et n'a pas vocation à le remplacer.
 
-## Contents
+## Composants
 
-| Component | Author | License | Link |
+| Composant | Auteur | Licence | Lien |
 |-----------|--------|---------|------|
 | goodluckOS (base) | CodeZombie | GPL-2.0 | https://github.com/CodeZombie/goodluckOS |
-| Mali-400 driver (kernel + userspace) | nyakaspeter | GPL-2.0 / ARM proprietary | https://github.com/nyakaspeter/goodluckOS-mali-driver |
+| Mali-400 driver (kernel + user-space) | nyakaspeter | GPL-2.0 / ARM proprietary | https://github.com/nyakaspeter/goodluckOS-mali-driver |
 | GTA III | nyakaspeter | MIT | https://github.com/nyakaspeter/glOSports-gta3-pc |
 | GTA Vice City | nyakaspeter | MIT | https://github.com/nyakaspeter/glOSports-gtavc-pc |
 | GTA Liberty City Stories | nyakaspeter | MIT | https://github.com/nyakaspeter/glOSports-gtalcs-pc |
