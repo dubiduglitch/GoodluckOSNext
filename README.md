@@ -1,27 +1,27 @@
 # goodluckOSNext
 
-Personal fork of [goodluckOS](https://github.com/CodeZombie/goodluckOS) by [dubiduglitch](https://github.com/dubiduglitch).
+Fork personnel de [goodluckOS](https://github.com/CodeZombie/goodluckOS) par [dubiduglitch](https://github.com/dubiduglitch).
 
-This repo is a personal fork. It is not affiliated with the official goodluckOS project and does not aim to replace it.
+Ce repo est un fork personnel. Il n'est pas affilié au projet officiel goodluckOS et n'a pas vocation à le remplacer.
 
 ---
 
 ## Console cible
 
-This firmware is designed for portable **GA36-MB V1.2-20260416** consoles (often sold as "R36S" clones).
+Ce firmware est destiné aux consoles portables **GA36-MB V1.2-20260416** (souvent vendues comme clones "R36S").
 
-| Feature | Detail |
-|---------|--------|
+| Caractéristique | Détail |
+|-----------------|--------|
 | SoC | Allwinner A23 (ARM Cortex-A7) |
 | GPU | Mali-400 MP2 |
 | RAM | 512 MB |
-| Screen | 640 × 480 |
-| Storage | microSD card (TF-1 primary, TF-2 optional on some models) |
-| Connectivity | USB OTG (gadget: serial, MTP, network) |
+| Écran | 640 × 480 |
+| Stockage | Carte microSD (TF-1 principale, TF-2 optionnelle selon les modèles) |
+| Connectivité | USB OTG (gadget : série, MTP, réseau) |
 
-This hardware is sold under various brands (R36S clone, Zekko, Tekko, etc.). No official driver is provided by the manufacturer for this hardware.
+Ce matériel est vendu sous diverses marques (R36S clone, Zekko, Tekko, etc.). Aucun pilote officiel n'est fourni par le constructeur pour ce matériel.
 
-More info: [R36S Clones - handhelds.wiki](https://handhelds.wiki/R36S_Clones)
+Plus d'infos : [R36S Clones - handhelds.wiki](https://handhelds.wiki/R36S_Clones)
 
 ---
 
@@ -66,4 +66,16 @@ Requires Docker. See `BUILD.md`.
 
 ---
 
+## Awesome goodluckOS
+
+| Resource | Description | Link |
+|----------|-------------|------|
+| goodluckOS README | Official project documentation | https://github.com/CodeZombie/goodluckOS/blob/main/README.md |
+| goodluckOS-mali-driver README | Mali-400 driver and ports documentation | https://github.com/nyakaspeter/goodluckOS-mali-driver/blob/main/README.md |
+| ga36.genserek.net | Ports and apps for goodluckOS | https://ga36.genserek.net/ |
+
+---
+
 > This is a personal fork. No warranty. Use at your own risk. Not affiliated with the official goodluckOS project.
+EOF
+echo "README overwritten in English with awesome goodluckOS section"
