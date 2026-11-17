@@ -46,5 +46,3 @@ Requires Docker. See `BUILD.md`.
 ---
 
 > This is a personal fork. No warranty. Use at your own risk. Not affiliated with the official goodluckOS project.
-EOF
-echo "README overwritten"
