@@ -66,6 +66,17 @@ Requires Docker. See `BUILD.md`.
 
 ---
 
+## Awesome goodluckOS
+
+| Ressource | Description | Lien |
+|-----------|-------------|------|
+| goodluckOS README | Documentation officielle du projet | https://github.com/CodeZombie/goodluckOS/blob/main/README.md |
+| SOFTWARE.md | Liste des ports et logiciels disponibles | https://github.com/CodeZombie/goodluckOS/blob/main/SOFTWARE.md |
+| goodluckOS-mali-driver README | Documentation du pilote Mali-400 et des ports | https://github.com/nyakaspeter/goodluckOS-mali-driver/blob/main/README.md |
+| ga36.genserek.net | Ports et applications pour goodluckOS | https://ga36.genserek.net/ |
+
+---
+
 > This is a personal fork. No warranty. Use at your own risk. Not affiliated with the official goodluckOS project.
 EOF
-echo "README overwritten in English"
+echo "README overwritten in English with awesome list"
