@@ -1,0 +1,10 @@
+# Stardew Valley for goodluckOS's App Installer; build.sh app fills in the version. Its first start brings in the
+# player's own game from HOME (stardew.sh, import.sh).
+[ENTRY]
+CATEGORY=Games
+NAME=Stardew Valley
+DESCRIPTION=Your own copy from Steam (compatibility branch): put it in HOME, as a folder or a zip, and open this
+DESCRIPTION_pt-BR=A sua cópia da Steam (ramo compatibility): coloque na HOME, como pasta ou zip, e abra aqui
+COMMAND=sh stardew.sh
+ICON=icon.png
+VERSION=0.1.0

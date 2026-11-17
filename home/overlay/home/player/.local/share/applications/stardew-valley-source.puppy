@@ -1,0 +1,7 @@
+# Stardew Valley (igol23/glOSports-stardew-valley, GPL-2.0)
+# Référence/documentation - le port terminé est chez alvesmaicon/glOSports-stardew
+[ENTRY]
+CATEGORY=Games
+NAME=Stardew Valley (source, GPL-2.0)
+DESCRIPTION=Stardew Valley source port (GPL-2.0) - see README.md for build info
+COMMAND=/home/player/ports/stardew-valley-source/README.md

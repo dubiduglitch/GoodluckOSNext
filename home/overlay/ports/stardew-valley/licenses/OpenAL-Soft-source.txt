@@ -1,0 +1,2 @@
+lib/libopenal.so.1 is OpenAL Soft 1.25.2, unmodified; its source:
+https://github.com/kcat/openal-soft/archive/refs/tags/1.25.2.tar.gz

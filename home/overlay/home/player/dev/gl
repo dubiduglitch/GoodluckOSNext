@@ -1,0 +1,482 @@
+#!/usr/bin/env bash
+# gl: partial builds for goodluckOS, so a one-file change never needs a full image.
+# Runs itself inside the dev container (Docker or Colima) or, without docker, natively on a
+# Debian with the packages of dev/Dockerfile (e.g. WSL). Output goes to dev/out. See dev/README.md.
+set -euo pipefail
+
+DEV=$(cd "$(dirname "$0")" && pwd)
+REPO=$(dirname "$DEV")
+IMAGE=goodluck-dev
+VOLUME=goodluck-work
+
+usage() {
+    cat <<'EOF'
+usage: dev/gl <command> [args]
+  image                     (re)build the dev container image
+  shell                     shell in the dev container
+  app puppy|gl-scrape       the launcher or the scraper: armhf + native binaries (gl-scrape: .env, see dev/README.md)
+  deploy <overlay files>... dev/out/deploy.tar.gz: the built apps + rootfs-overlay files, console paths
+  scrape-test               gl-scrape's tests: its pieces under sanitizers, then the program against a fake ScreenScraper
+  shot <app> <name> <keys>  native app in Xvfb, a screenshot at each "|" (keys: xdotool names, "_" waits 1 s)
+  scenes [dir]              launcher scenes of dev/scenes, one screenshot each (default dev/out/scenes)
+  scenes-diff <dir> <dir>   the scenes whose screenshots differ between two runs, pixel by pixel
+  rootfs [make targets]     Buildroot, incremental (e.g. mesa3d-rebuild, puppy-rebuild)
+  slim [-n]                 empty Buildroot's build dirs that nobody rebuilds by hand, stamps kept (-n: only list)
+  ext4                      dev/out/rootfs.ext4 from the last rootfs.tar (partition 1, 384 MiB)
+  kernel                    dev/out/android_boot_a33.img (+a23) with panel 1 (GL_PANEL=2), like kernel/Dockerfile
+  kernel-rk3326             dev/out/rk3326: the R36H's arm64 kernel and DTB (kernel/rk3326)
+  uboot-rk3326              dev/out/rk3326: mainline U-Boot for the R36H (u-boot-rockchip.bin) and its uboot.env
+  card-rk3326               dev/out/rk3326/r36h-card.img: a whole R36H test card (U-Boot + kernel + rootfs.tar)
+EOF
+    exit 1
+}
+
+[ $# -ge 1 ] || usage
+
+# Buildroot changes the volume that other checkouts and sessions build in and read from: one at a time
+if { [ "$1" = rootfs ] || [ "$1" = slim ]; } && [ ! -f /.dockerenv ] && command -v docker >/dev/null 2>&1; then
+    busy=$(docker ps --filter volume=$VOLUME --format '{{.Names}} ({{.Image}}): {{.Command}}')
+    [ -z "$busy" ] || { echo "another container uses $VOLUME, try again when it ends:"; echo "$busy"; exit 1; }
+fi
+
+# --- outside the container: hand everything to it ---------------------------------------------
+if [ ! -f /.dockerenv ] && [ -z "${GL_NATIVE:-}" ]; then
+    if command -v docker >/dev/null 2>&1; then
+        if [ "$1" = image ] || ! docker image inspect $IMAGE >/dev/null 2>&1; then
+            docker build -t $IMAGE "$DEV"
+            [ "$1" = image ] && exit 0
+        fi
+        tty=; [ -t 0 ] && tty=-t
+        # ScreenScraper's credentials for gl-scrape: .env in this checkout or in the main one, never in git
+        for env in "$REPO/.env" "$(git -C "$REPO" rev-parse --path-format=absolute --git-common-dir 2>/dev/null)/../.env"; do
+            [ -f "$env" ] || continue
+            while IFS= read -r line || [ -n "$line" ]; do
+                case $line in SS_DEVID=*|SS_DEVPASSWORD=*|SS_USER=*|SS_PASSWORD=*)
+                    v=${line#*=}; v=${v%$'\r'}; v=${v#[\"\']}; v=${v%[\"\']}; export "${line%%=*}=$v" ;;
+                esac
+            done < "$env"
+            break
+        done
+        exec docker run --rm -i $tty --privileged -v "$REPO:/repo" -v $VOLUME:/work \
+            -e GL_JOBS="${GL_JOBS:-}" -e SS_DEVID -e SS_DEVPASSWORD -e SS_USER -e SS_PASSWORD $IMAGE /repo/dev/gl "$@"
+    fi
+    command -v arm-linux-gnueabihf-g++ >/dev/null || { echo "no docker and no armhf cross compiler: see dev/README.md"; exit 1; }
+    export GL_NATIVE=1
+fi
+
+# --- inside the container (or a prepared Debian) -----------------------------------------------
+WORK=${GL_WORK:-/work}
+[ -f /.dockerenv ] || WORK=${GL_WORK:-$HOME/.cache/goodluck-work}
+OUT=$REPO/dev/out
+PKG=$REPO/rootfs/package
+OVERLAY=$REPO/rootfs/board/my-device/rootfs-overlay
+JOBS=${GL_JOBS:-$(nproc)}
+ARCH=$(uname -m)
+mkdir -p "$WORK" "$OUT"
+PCA="env PKG_CONFIG_LIBDIR=/usr/lib/arm-linux-gnueabihf/pkgconfig pkg-config"
+ARMFLAGS="-march=armv7-a -mfpu=neon-vfpv4 -mfloat-abi=hard"
+
+# Puppy as puppy.mk builds it
+build_app() {
+    local app=$1
+    if [ "$app" = gl-scrape ]; then
+        local src=$PKG/gl-scrape/src inc=$WORK/gl-scrape-inc
+        mkdir -p "$inc"; "$PKG/gl-scrape/credentials.sh" > "$inc/credentials.h"
+        arm-linux-gnueabihf-g++ -O2 -std=c++17 $ARMFLAGS -I"$inc" "$src"/*.cpp -o "$OUT/$app.armhf"
+        arm-linux-gnueabihf-strip "$OUT/$app.armhf"
+        g++ -O2 -std=c++17 -I"$inc" "$src"/*.cpp -o "$OUT/$app.$ARCH"
+        echo "OK $app: $(stat -c %s "$OUT/$app.armhf") bytes armhf$([ -n "${SS_DEVID:-}" ] || echo ', NO ScreenScraper credentials (.env)'); native: dev/out/$app.$ARCH"
+        return
+    fi
+    [ "$app" = puppy ] || { echo "unknown app: $app (puppy or gl-scrape)"; exit 1; }
+    local src inc="-I$PKG/puppy/src" libs="-lSDL2_image -lSDL2_ttf -lasound -lz"
+    src=$(ls "$PKG"/puppy/src/*.cpp "$PKG"/puppy/src/system/*.cpp)
+    arm-linux-gnueabihf-g++ -O2 -std=c++17 $ARMFLAGS $inc $src \
+        -o "$OUT/$app.armhf" $($PCA --libs sdl2) $libs -lpthread
+    arm-linux-gnueabihf-strip "$OUT/$app.armhf"
+    g++ -O2 -std=c++17 $inc $src \
+        -o "$OUT/$app.$ARCH" $(pkg-config --libs sdl2) $libs -lpthread
+    echo "OK $app: $(stat -c %s "$OUT/$app.armhf") bytes armhf, glibc max $(arm-linux-gnueabihf-objdump -T "$OUT/$app.armhf" | grep -oE 'GLIBC_[0-9.]+' | sort -Vu | tail -1); native: dev/out/$app.$ARCH"
+}
+
+# The console's /usr/share files, so native builds run as they do on the device
+fake_device() {
+    mkdir -p /usr/share/puppy /usr/share/fonts /usr/share/icons /usr/share/goodluck /home/player/roms
+    cp -r "$OVERLAY/usr/share/puppy/." /usr/share/puppy/
+    cp "$OVERLAY"/usr/share/fonts/*.ttf /usr/share/fonts/
+    cp -r "$OVERLAY/usr/share/goodluck/." /usr/share/goodluck/
+    cp "$OVERLAY"/usr/share/icons/*.png /usr/share/icons/ 2>/dev/null || true
+    for s in nes snes gba gb gbc genesis psx; do mkdir -p /home/player/roms/$s/icons; done
+    mkdir -p /usr/share/credits; cp "$OVERLAY/usr/share/credits/credits.ini" /usr/share/credits/
+    [ -x /usr/bin/credits ] || { echo "#!/bin/sh" > /usr/bin/credits; chmod +x /usr/bin/credits; }   # Puppy shows Credits when the app is there
+}
+
+shot() {
+    local bin=$OUT/$1.$ARCH name=$2 keys=$3 n=0
+    [ -x "$bin" ] || build_app "$1"
+    fake_device
+    mkdir -p "$OUT/shots"
+    Xvfb :99 -screen 0 640x480x24 -nolisten tcp >/dev/null 2>&1 & local X=$!
+    sleep 1
+    DISPLAY=:99 SDL_VIDEODRIVER=x11 "$bin" >/tmp/app.log 2>&1 & local P=$!
+    sleep 2
+    for k in $keys; do
+        if [ "$k" = "|" ]; then
+            n=$((n + 1)); sleep 0.6
+            DISPLAY=:99 xwd -root -silent | convert xwd:- "$OUT/shots/$name-$n.png"; echo "dev/out/shots/$name-$n.png"
+        elif [ "$k" = "_" ]; then sleep 1
+        else DISPLAY=:99 xdotool key "$k"; sleep 0.3; fi
+    done
+    kill $P $X 2>/dev/null || true
+}
+
+# Launcher scenes for regression checks: the native Puppy on the fake games of dev/scenes, with a
+# frozen clock and a fake battery and mixer, in its own mount namespace (HOME, /dev/shm and /media
+# are throwaway), so two runs come out the same and nothing is left on the machine.
+scenes() {
+    local out=${1:-$OUT/scenes}
+    build_app puppy >/dev/null
+    gcc -shared -fPIC -O2 -o "$WORK/scene-shim.so" "$DEV/scenes/shim.c" -ldl
+    fake_device
+    rm -rf "$out"; mkdir -p "$out"
+    unshare -m "$DEV/gl" _scenes "$(cd "$out" && pwd)"
+}
+
+# dev/scenes/games.txt -> ROM folders in $1, with generated covers and gamelist.xml files
+scene_games() {
+    local dst=$1 font=/usr/share/fonts/Inter_24pt-Medium.ttf i=0 sys file name year genre players desc dir
+    local colors=('#7a2e2e' '#2e5a7a' '#4d7a2e' '#6b2e7a' '#7a5c2e' '#2e7a6b')
+    while IFS='|' read -r sys file name year genre players desc; do
+        case $sys in ''|'#'*) continue ;; esac
+        dir=$dst/$sys; mkdir -p "$dir/icons"; : >"$dir/$file"
+        convert -size 320x240 "gradient:${colors[i % 6]}-#101014" -font "$font" -pointsize 24 -fill white \
+            -gravity center -annotate +0+0 "${file%.*}" "$dir/icons/${file%.*}.png"
+        if [ -n "$name" ]; then
+            [ -f "$dir/gamelist.xml" ] || echo '<?xml version="1.0"?><gameList>' >"$dir/gamelist.xml"
+            printf '<game><path>./%s</path><name>%s</name><desc>%s</desc><releasedate>%s0101T000000</releasedate><genre>%s</genre><players>%s</players></game>\n' \
+                "$file" "$name" "$desc" "$year" "$genre" "$players" >>"$dir/gamelist.xml"
+        fi
+        i=$((i + 1))
+    done <"$DEV/scenes/games.txt"
+    for g in "$dst"/*/gamelist.xml; do echo '</gameList>' >>"$g"; done
+}
+
+# The SoC's sensor at $1 degrees C and the AXP's (an IIO device found by its path) at $2, for one scene
+scene_temps() {
+    mount -t tmpfs none /sys/class/thermal
+    mkdir /sys/class/thermal/thermal_zone0; echo $(($1 * 1000)) >/sys/class/thermal/thermal_zone0/temp
+    mkdir -p /media/axp20x-adc; echo $(($2 * 10 + 1447)) >/media/axp20x-adc/in_temp_raw
+    echo -1447 >/media/axp20x-adc/in_temp_offset; echo 100 >/media/axp20x-adc/in_temp_scale
+    mount -t tmpfs none /sys/bus; mkdir -p /sys/bus/iio/devices; ln -s /media/axp20x-adc /sys/bus/iio/devices/iio:device0
+}
+
+# One Puppy of a scene; "restart" in the keys starts another on the same HOME, as after a game
+scene_puppy() {
+    DISPLAY=:98 SDL_VIDEODRIVER=x11 TZ=UTC0 FAKE_EPOCH=$epoch LD_PRELOAD=$WORK/scene-shim.so \
+        env ${conf:+PUPPY_CONFIG=/home/player/scene.conf} "$OUT/puppy.$ARCH" >>"$out/$name.log" 2>&1 & pid=$!
+    sleep 2
+}
+
+# Inside the namespace of scenes(): one fresh Puppy per line of dev/scenes/scenes.txt
+scenes_run() {
+    local out=$1 epoch name view tabs lang keys k pid n=0 bat=/sys/class/power_supply/battery
+    epoch=$(date -u -d '2026-10-08 12:30' +%s)
+    for d in /home/player /dev/shm /media /sys/class/power_supply; do mkdir -p $d; mount -t tmpfs none $d; done
+    mkdir $bat; echo Battery >$bat/type; echo 82 >$bat/capacity; echo Discharging >$bat/status
+    printf 'MemTotal:         503000 kB\nMemFree:          200000 kB\nMemAvailable:     310000 kB\n' >/media/meminfo
+    mount --bind /media/meminfo /proc/meminfo      # System Info: the PC's free memory changes all the time
+    mkdir -p /media/games; scene_games /media/games
+    Xvfb :98 -screen 0 640x480x24 -nolisten tcp >/dev/null 2>&1 & local X=$!
+    sleep 1
+    while read -r name view tabs lang keys <&3; do
+        case $name in ''|'#'*) continue ;; esac
+        rm -rf /home/player/* /home/player/.[!.]* /dev/shm/*
+        cp -a /media/games /home/player/roms
+        mkdir -p /home/player/.config/puppy
+        printf 'view=%s\ntabs=%s\nlanguage=%s\n' "$view" "$tabs" "$lang" >/home/player/.config/puppy/settings
+        local conf="" hud="" temps="" press=""
+        for k in $keys; do
+            case $k in
+                conf:*) conf="$conf${k#conf:}"$'\n' ;;
+                hud:*) hud="$hud${k#hud:}"$'\n' ;;
+                set:*) echo "${k#set:}" >>/home/player/.config/puppy/settings ;;
+                temps:*) temps=${k#temps:} ;;
+                *) press="$press $k" ;;
+            esac
+        done
+        [ -n "$conf" ] && printf '%s' "$conf" >/home/player/scene.conf
+        [ -n "$hud" ] && printf '%s' "$hud" >/home/player/.config/gallium_hud.conf
+        [ -n "$temps" ] && scene_temps "${temps%:*}" "${temps#*:}"
+        : >"$out/$name.log"
+        scene_puppy
+        for k in $press; do
+            if [ "$k" = _ ]; then sleep 1
+            elif [ "$k" = restart ]; then kill $pid 2>/dev/null; wait $pid 2>/dev/null; scene_puppy
+            else DISPLAY=:98 xdotool key "$k"; sleep 0.3; fi
+        done
+        sleep 0.6
+        DISPLAY=:98 xwd -root -silent | convert xwd:- "$out/$name.png"
+        kill $pid 2>/dev/null || true; wait $pid 2>/dev/null || true
+        [ -s "$out/$name.log" ] || rm -f "$out/$name.log"
+        [ -n "$temps" ] && umount /sys/class/thermal /sys/bus
+        n=$((n + 1))
+    done 3<"$DEV/scenes/scenes.txt"
+    kill $X 2>/dev/null || true
+    echo "$n scenes in ${out#"$REPO"/}"
+}
+
+scenes_diff() {
+    local a=$1 b=$2 f n px bad=0
+    for f in "$a"/*.png; do
+        n=$(basename "$f")
+        if [ ! -f "$b/$n" ]; then echo "only in $a: $n"; bad=1; continue; fi
+        px=$(compare -metric AE "$f" "$b/$n" null: 2>&1) || true
+        px=${px%% *}
+        [ "$px" = 0 ] || { echo "differs: ${n%.png} ($px pixels)"; bad=1; }
+    done
+    for f in "$b"/*.png; do
+        [ -f "$a/$(basename "$f")" ] || { echo "only in $b: $(basename "$f")"; bad=1; }
+    done
+    [ $bad = 1 ] || echo "same: $(ls "$a"/*.png | wc -l) scenes"
+    return $bad
+}
+
+# Buildroot the way rootfs/Dockerfile + scripts/build.sh do, but with its tree on a Linux
+# filesystem (the work volume): macOS bind mounts are case-insensitive and slow.
+# br_tree <rootfs dir>: that tree's board, configs and package in, and BR_MAKE to run make there
+br_tree() {
+    local src=$1 br=$WORK/br
+    local ver; ver=$(sed -n 's/.* -b \([^ ]*\) https:\/\/gitlab.com\/buildroot.*/\1/p' "$src/Dockerfile")
+    mkdir -p "$br"
+    [ -d "$br/buildroot" ] || git clone -q --depth 1 -b "$ver" https://gitlab.com/buildroot.org/buildroot.git "$br/buildroot"
+    for d in board configs package; do rsync -a --delete "$src/$d/" "$br/$d/"; done
+    printf 'name: GOODLUCKOS\ndesc: An enthusiast OS for the GA36-MB\n' > "$br/external.desc"
+    echo 'include $(sort $(wildcard $(BR2_EXTERNAL_GOODLUCKOS_PATH)/package/*/*.mk))' > "$br/external.mk"
+    echo "source \"$br/package/Config.in\"" > "$br/Config.in"
+    BR_MAKE="make -C $br/buildroot O=$br/out BR2_EXTERNAL=$br BR2_DL_DIR=$br/dl BR2_JLEVEL=$JOBS"
+    # the defconfig only when it changed, so an incremental build stays incremental
+    if ! cmp -s "$br/configs/goodluck_defconfig" "$br/.defconfig-used"; then
+        $BR_MAKE goodluck_defconfig && cp "$br/configs/goodluck_defconfig" "$br/.defconfig-used"
+    fi
+}
+
+rootfs() {
+    local br=$WORK/br
+    br_tree "$REPO/rootfs"
+    date +%T; $BR_MAKE "$@"; date +%T
+    if [ -f "$br/out/images/rootfs.tar" ]; then
+        cp "$br/out/images/rootfs.tar" "$OUT/"
+        echo "dev/out/rootfs.tar; single files are in $br/out/target (e.g. usr/lib/libgallium-*.so)"
+    fi
+}
+
+# Buildroot goes by the .stamp_* files alone, so a package nobody rebuilds by hand only needs those:
+# empty the big ones that are not ours (rootfs/package), patched (board/my-device/patches) or busybox
+slim() {
+    local b=$WORK/br/out/build dry= keep d n p mb total=0
+    [ "${1:-}" = -n ] && dry=1
+    keep="busybox $(cd "$PKG" && ls -d */ | tr -d /) $(ls "$REPO/rootfs/board/my-device/patches")"
+    for d in "$b"/*/; do
+        d=${d%/}; n=$(basename "$d"); n=${n#host-}
+        [ -f "$d/.stamp_installed" ] && [ ! -f "$d/.stamp_rsynced" ] || continue
+        for p in $keep; do case $n in "$p" | "$p"-*) continue 2 ;; esac; done
+        mb=$(du -xsm "$d" | cut -f1)
+        [ "$mb" -ge 50 ] || continue
+        echo "$mb MB $(basename "$d")"; total=$((total + mb))
+        [ -n "$dry" ] || find "$d" -mindepth 1 -maxdepth 1 ! -name '.stamp_*' -exec rm -rf {} +
+    done
+    if [ -n "$dry" ]; then echo "$total MB to free (dry run)"; return; fi
+    echo "$total MB freed; to rebuild one of these: dev/gl rootfs <pkg>-dirclean <pkg>"
+    fstrim -v "$WORK" 2>/dev/null || echo "no fstrim here: run it as root on the volume's disk to give the space back"
+}
+
+ext4() {
+    local t=$WORK/ext4-root
+    [ -f "$OUT/rootfs.tar" ] || { echo "no dev/out/rootfs.tar: run dev/gl rootfs first"; exit 1; }
+    rm -rf "$t"; mkdir -p "$t"
+    tar -xpf "$OUT/rootfs.tar" -C "$t"
+    rm -f "$OUT/rootfs.ext4"
+    mkfs.ext4 -q -L linux -d "$t" "$OUT/rootfs.ext4" 384M
+    rm -rf "$t"
+    echo "dev/out/rootfs.ext4 (partition 1: sector 262144, 384 MiB)"
+}
+
+kernel() {
+    local k=$REPO/kernel src=$WORK/linux
+    export ARCH=arm CROSS_COMPILE=arm-linux-gnueabihf-
+    local ref panel=${GL_PANEL:-1}; ref=$(sed -n 's/.* -b \([^ ]*\) https.*/\1/p' "$k/Dockerfile")
+    [ -d "$src" ] || git clone -q --depth=1 -b "$ref" https://git.kernel.org/pub/scm/linux/kernel/git/stable/linux.git "$src"
+    cd "$src"
+    git checkout -q -- . && git clean -qfd   # undo the previous run's patches and drivers
+    git rev-parse -q --verify "$ref^{commit}" >/dev/null || git fetch -q --depth=1 origin tag "$ref"
+    git checkout -q "$ref"
+    make sunxi_defconfig >/dev/null
+    grep -v '^ *#' "$k/Dockerfile" | grep -o '\./scripts/config [^&]*' | sed 's/ *$//' | sh
+    make olddefconfig >/dev/null
+    git apply "$k"/patches/*.patch
+    cp "$k/drivers/jd9366-ga36mbv1-2.c" drivers/gpu/drm/panel/
+    echo 'obj-$(CONFIG_DRM_PANEL_JD9366) += jd9366-ga36mbv1-2.o' >> drivers/gpu/drm/panel/Makefile
+    sed -i '/^endmenu/i config DRM_PANEL_JD9366\n\ttristate "JD9366 panel"\n\tdepends on OF \&\& DRM \&\& BACKLIGHT_CLASS_DEVICE\n' drivers/gpu/drm/panel/Kconfig
+    cp "$k/drivers/ga36mb-gamepad.c" drivers/input/joystick/
+    echo 'obj-$(CONFIG_GA36MB_GAMEPAD) += ga36mb-gamepad.o' >> drivers/input/joystick/Makefile
+    sed -i '/^endif/i config GA36MB_GAMEPAD\n\ttristate "GA36MB GAMEPAD"\n\tdepends on SERIAL_DEV_BUS\n' drivers/input/joystick/Kconfig
+    cp "$k"/dts/* arch/arm/boot/dts/allwinner/
+    printf 'dtb-$(CONFIG_MACH_SUN8I) += ga36mb-a33-panel%s.dtb ga36mb-a23-panel%s.dtb\n' "$panel" "$panel" >> arch/arm/boot/dts/allwinner/Makefile
+    ./scripts/config --enable CONFIG_DRM_PANEL_JD9366 --enable CONFIG_GA36MB_GAMEPAD
+    make olddefconfig >/dev/null
+    make -j"$JOBS" zImage dtbs
+    : > /tmp/empty_ramdisk
+    for soc in a33 a23; do
+        cat arch/arm/boot/zImage arch/arm/boot/dts/allwinner/ga36mb-$soc-panel$panel.dtb > /tmp/zImage_$soc
+        mkbootimg --kernel /tmp/zImage_$soc --ramdisk /tmp/empty_ramdisk --base 0x40000000 \
+            --board sun8i --pagesize 2048 -o "$OUT/android_boot_$soc.img"
+    done
+    cp .config "$OUT/kernel_config.txt"
+    echo "dev/out/android_boot_a33.img (sector 172032)"
+}
+
+# arm64 kernel for the R36H, from its own worktree of the same tree: the A33's build stays as it is
+kernel_rk3326() {
+    local k=$REPO/kernel src=$WORK/linux-rk3326 r=$REPO/kernel/rk3326 ref
+    ref=$(sed -n 's/.* -b \([^ ]*\) https.*/\1/p' "$k/Dockerfile")
+    [ -d "$WORK/linux" ] || git clone -q --depth=1 -b "$ref" https://git.kernel.org/pub/scm/linux/kernel/git/stable/linux.git "$WORK/linux"
+    git -C "$WORK/linux" rev-parse -q --verify "$ref^{commit}" >/dev/null || git -C "$WORK/linux" fetch -q --depth=1 origin tag "$ref"
+    [ -d "$src" ] || git -C "$WORK/linux" worktree add -q --detach "$src" "$ref"
+    cd "$src"
+    git checkout -q -- . && git clean -qfd
+    git checkout -q --detach "$ref"
+    export ARCH=arm64 CROSS_COMPILE= CROSS_COMPILE_COMPAT=arm-linux-gnueabihf-
+    for p in "$r"/patches/*.patch; do git apply "$p"; done   # one by one: 0003 changes a file 0002 creates
+    cp "$r/gpio-adc-gamepad.c" drivers/input/joystick/
+    echo 'obj-$(CONFIG_GPIO_ADC_GAMEPAD) += gpio-adc-gamepad.o' >> drivers/input/joystick/Makefile
+    sed -i '/^endif/i config GPIO_ADC_GAMEPAD\n\ttristate "Gamepad from GPIO buttons and ADC sticks"\n\tdepends on GPIOLIB \&\& IIO\n' drivers/input/joystick/Kconfig
+    # the project's boot logo instead of Tux (the u-boot draws nothing on this panel)
+    convert "$REPO/image/res/goodluck_bootlogo.bmp" -colors 224 -compress none drivers/video/logo/logo_linux_clut224.ppm
+    cp "$r"/*.dts arch/arm64/boot/dts/rockchip/
+    echo 'dtb-$(CONFIG_ARCH_ROCKCHIP) += rk3326-gameconsole-r36h.dtb' >> arch/arm64/boot/dts/rockchip/Makefile
+    make defconfig >/dev/null
+    sed -n 's/^config \(ARCH_[A-Z0-9_]*\)$/\1/p' arch/arm64/Kconfig.platforms | grep -vx ARCH_ROCKCHIP | sed 's/^/--disable CONFIG_/' | xargs ./scripts/config
+    grep -v '^ *#' "$r/config" | xargs ./scripts/config
+    make olddefconfig >/dev/null
+    make -j"$JOBS" Image rockchip/rk3326-gameconsole-r36h.dtb
+    mkdir -p "$OUT/rk3326"
+    cp arch/arm64/boot/Image arch/arm64/boot/dts/rockchip/rk3326-gameconsole-r36h.dtb "$OUT/rk3326/"
+    cp .config "$OUT/rk3326/kernel_config.txt"
+    echo "dev/out/rk3326: Image, rk3326-gameconsole-r36h.dtb (BOOT partition)"
+}
+
+# Mainline U-Boot for the R36H, from Andre Renaud's R36S tree (buildroot-r36s; nixos-handheld boots the
+# R36H with the same kind): the stock u-boot never ran our boot.ini. DDR init and BL31 from rkbin.
+uboot_rk3326() {
+    local src=$WORK/u-boot-r36s o=$OUT/rk3326 rk=$WORK/rkbin f
+    [ -d "$src" ] || git clone -q --depth=1 -b r36s-v2024.04 https://github.com/AndreRenaud/u-boot-r36s.git "$src"
+    mkdir -p "$rk" "$o"
+    for f in rk3326_ddr_333MHz_v2.12.bin rk3326_bl31_v1.37.elf; do
+        [ -f "$rk/$f" ] || curl -sfL -o "$rk/$f" "https://github.com/rockchip-linux/rkbin/raw/master/bin/rk33/$f"
+    done
+    cd "$src"
+    git checkout -q -- . && git clean -qfd
+    # binman would import a pylibfdt left in the tree before Debian's
+    git clean -qfdX scripts/dtc/pylibfdt
+    make r36s_defconfig >/dev/null
+    echo CONFIG_ROCKCHIP_EXTERNAL_TPL=y >> .config
+    make olddefconfig >/dev/null
+    grep -q '^CONFIG_ROCKCHIP_EXTERNAL_TPL=y' .config || { echo "U-Boot dropped ROCKCHIP_EXTERNAL_TPL"; exit 1; }
+    # Debian's dtc and pylibfdt: the in-tree pylibfdt of v2024.04 does not build with SWIG 4.3
+    make -j"$JOBS" DTC=/usr/bin/dtc ROCKCHIP_TPL="$rk/rk3326_ddr_333MHz_v2.12.bin" BL31="$rk/rk3326_bl31_v1.37.elf"
+    cp u-boot-rockchip.bin "$o/"
+    tools/mkenvimage -s 0x4000 -o "$o/uboot.env" "$REPO/kernel/rk3326/uboot-env.txt"
+    echo "dev/out/rk3326: u-boot-rockchip.bin (sector 64), uboot.env (BOOT), u-boot $(git rev-parse --short HEAD)"
+}
+
+# R36H test card: U-Boot at sector 64, BOOT (its uboot.env, the Image and the DTB), the rootfs from
+# dev/out/rootfs.tar and a small HOME. U-Boot keeps its environment on partition 1, so the rootfs is
+# partition 2 and HOME partition 3.
+card_rk3326() {
+    local o=$OUT/rk3326 t=$WORK/card-rk3326 img=$OUT/rk3326/r36h-card.img f
+    for f in u-boot-rockchip.bin uboot.env Image rk3326-gameconsole-r36h.dtb; do
+        [ -f "$o/$f" ] || { echo "no dev/out/rk3326/$f"; exit 1; }
+    done
+    [ -f "$OUT/rootfs.tar" ] || { echo "no dev/out/rootfs.tar"; exit 1; }
+    rm -rf "$t"; mkdir -p "$t/root" "$t/mnt"
+    # MiB: loaders 0-16, BOOT 16-144, rootfs 144-528, HOME 528-1024
+    rm -f "$img"; truncate -s 1024M "$img"
+    dd if="$o/u-boot-rockchip.bin" of="$img" bs=512 seek=64 conv=notrunc status=none
+    python3 - "$img" <<'EOF'
+import struct, sys
+mbr = bytearray(512)
+for i, (kind, start, size) in enumerate([(0x0c, 16, 128), (0x83, 144, 384), (0x0c, 528, 496)]):
+    mbr[446 + 16 * i:462 + 16 * i] = struct.pack('<B3sB3sII', 0x80 if i == 0 else 0, b'\xfe\xff\xff',
+                                                 kind, b'\xfe\xff\xff', start * 2048, size * 2048)
+mbr[510:] = b'\x55\xaa'
+with open(sys.argv[1], 'r+b') as f:
+    f.write(mbr)
+EOF
+    mkfs.vfat -F 32 -n BOOT -C "$t/boot.vfat" $((128 * 1024)) >/dev/null
+    mount -o loop "$t/boot.vfat" "$t/mnt"
+    cp "$o/uboot.env" "$o/Image" "$o/rk3326-gameconsole-r36h.dtb" "$t/mnt/"
+    umount "$t/mnt"
+    dd if="$t/boot.vfat" of="$img" bs=1M seek=16 conv=notrunc status=none
+    tar -xpf "$OUT/rootfs.tar" -C "$t/root"
+    # until the rootfs finds its partitions by label: this card's layout, and no HOME resize (p2 is the rootfs)
+    sed -i 's#^/dev/mmcblk0p2 #/dev/mmcblk0p3 #; s#^/dev/mmcblk0p1 #/dev/mmcblk0p2 #' "$t/root/etc/fstab"
+    rm -f "$t/root/etc/init.d/S01resize-home"
+    # bring-up: the kernel log and a few facts on HOME, which any card reader shows
+    cat > "$t/root/etc/init.d/S98r36h-log" <<'EOF'
+#!/bin/sh
+[ "$1" = start ] || exit 0
+(for t in 0 20 40; do sleep $t
+    { cat /proc/uptime /proc/cmdline; echo "udc: $(ls /sys/class/udc)"
+      ls /sys/class/drm /sys/class/leds /sys/class/backlight /sys/class/power_supply /dev/input /dev/dri; ps
+      tail -n 80 /dev/shm/application/launcher.log /dev/shm/application/application.log; dmesg
+    } > /home/player/r36h-boot.txt 2>&1; sync; done) &
+EOF
+    chmod +x "$t/root/etc/init.d/S98r36h-log"
+    mkfs.ext4 -q -L linux -d "$t/root" "$t/root.ext4" 384M
+    dd if="$t/root.ext4" of="$img" bs=1M seek=144 conv=notrunc status=none
+    mkfs.vfat -F 32 -n HOME -C "$t/home.vfat" $((496 * 1024)) >/dev/null
+    mount -o loop "$t/home.vfat" "$t/mnt"
+    cp -r "$REPO/home/overlay/." "$t/mnt/"
+    echo r36h-dev > "$t/mnt/.card-name"
+    umount "$t/mnt"
+    dd if="$t/home.vfat" of="$img" bs=1M seek=528 conv=notrunc status=none
+    rm -rf "$t"
+    echo "dev/out/rk3326/r36h-card.img (1 GiB, the whole card)"
+}
+
+deploy() {
+    local s=$WORK/deploy
+    rm -rf "$s"; mkdir -p "$s/usr/bin"
+    for app in puppy gl-scrape; do
+        [ -f "$OUT/$app.armhf" ] && install -m 0755 "$OUT/$app.armhf" "$s/usr/bin/$app"
+    done
+    for f in "$@"; do
+        f=${f#/}
+        mkdir -p "$s/$(dirname "$f")"; cp -p "$OVERLAY/$f" "$s/$f"
+    done
+    tar -C "$s" --owner=0 --group=0 -czf "$OUT/deploy.tar.gz" .
+    tar -tzvf "$OUT/deploy.tar.gz" | awk '$1 !~ /^d/ {print $3, $6}'
+    echo "dev/out/deploy.tar.gz: copy it to HOME, then on the console: tar -xzf /home/player/deploy.tar.gz -C /"
+    [ -f "$s/usr/local/bin/appctl" ] && echo "appctl: reboot the console, the running appd keeps the old one"
+    return 0
+}
+
+cmd=$1; shift
+case $cmd in
+    shell) exec bash ;;
+    app) [ $# -ge 1 ] || usage; for a in "$@"; do build_app "$a"; done ;;
+    shot) [ $# -eq 3 ] || usage; shot "$@" ;;
+    scrape-test) bash "$DEV/scrape-test/run.sh" ;;
+    scenes) scenes "$@" ;;
+    _scenes) scenes_run "$@" ;;
+    scenes-diff) [ $# -eq 2 ] || usage; scenes_diff "$@" ;;
+    rootfs) rootfs "$@" ;;
+    slim) slim "$@" ;;
+    ext4) ext4 ;;
+    kernel) kernel ;;
+    kernel-rk3326) kernel_rk3326 ;;
+    uboot-rk3326) uboot_rk3326 ;;
+    card-rk3326) card_rk3326 ;;
+    deploy) deploy "$@" ;;
+    *) usage ;;
+esac

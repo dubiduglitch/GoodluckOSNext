@@ -1,0 +1,7 @@
+[ENTRY]
+CATEGORY=Ports
+NAME=Half-Life
+DESCRIPTION=Half-Life (Xash3D FWGS)
+ICON=/home/player/.local/share/icons/xash3d.png
+COMMAND=/home/player/ports/xash3d/run.sh
+COLOR=#ffb020

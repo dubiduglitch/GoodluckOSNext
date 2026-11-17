@@ -1,0 +1,59 @@
+#include <SDL2/SDL.h>
+
+#include <cstdlib>
+#include <iostream>
+#include <memory>
+#include <string>
+
+
+#include "accents.h"
+#include "app.h"
+#include "catalog.h"
+#include "config.h"
+#include "fonts.h"
+#include "i18n.h"
+#include "input.h"
+#include "launcher.h"
+#include "library.h"
+#include "model.h"
+#include "styles.h"
+#include "system/prefs.h"
+#include "system/retroarch.h"
+#include "ui.h"
+#include "util.h"
+
+int main(int argc, char** argv) {
+    unsetenv("GALLIUM_HUD_STATUS");     // the top bar already shows it
+    if (!loadConfig(argc, argv)) return 2;
+    const Prefs prefs = Prefs::load();
+    i18n::load(!cfg.language.empty() ? cfg.language : prefs.language);
+
+    Model model;
+    if (!loadModel(model)) return 1;
+    restoreCursor(model);
+    if (model.cur().hidden) model.tab = 0;   // All Games
+
+    styles::choose(prefs.style);
+    std::string font, bold;
+    float fontScale;
+    fonts::choose(prefs.font, theme().showcase, font, bold, fontScale);
+    accents::choose(prefs.accent);
+    setConfirmBottom(nullptr, prefs.confirmBottom);    // sdl_controller.sh already mapped the pad
+    if (prefs.confirmBottom) addRetroArchSwap();       // cards set to B before RetroArch followed it
+    Ui ui(font, bold, fontScale);
+    if (!ui.ok()) return 1;
+
+    SDL_GameController* pad = nullptr;
+    for (int i = 0; i < SDL_NumJoysticks(); ++i) {
+        if (SDL_IsGameController(i)) { pad = SDL_GameControllerOpen(i); break; }
+    }
+
+    int rc;
+    {
+        App app(ui, pad);
+        app.push(std::make_unique<LauncherScreen>(app, std::move(model)));
+        rc = app.run();
+    }
+    if (pad) SDL_GameControllerClose(pad);
+    return rc;
+}

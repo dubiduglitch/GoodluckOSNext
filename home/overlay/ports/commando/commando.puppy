@@ -1,0 +1,7 @@
+[ENTRY]
+CATEGORY=Ports
+NAME=Commando
+DESCRIPTION=Commando (Fallen Angel Industries) on the Klik player
+ICON=/home/player/.local/share/icons/commando.png
+COMMAND=/home/player/ports/commando/run.sh
+COLOR=#5bd16e

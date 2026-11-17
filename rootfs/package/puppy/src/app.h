@@ -1,0 +1,83 @@
+#pragma once
+// The screens Puppy shows and the loop that runs them. Screens sit on a stack: the launcher at the
+// bottom, then whatever opens over it (a menu, the keyboard, a status message). Input goes to the
+// top one.
+#include <SDL2/SDL.h>
+
+#include <memory>
+#include <string>
+#include <vector>
+
+#include "input.h"
+#include "system/audio.h"
+#include "system/device.h"
+#include "system/hud.h"
+#include "ui.h"
+
+class App;
+
+class Screen {
+public:
+    explicit Screen(App& app) : app(app) {}
+    virtual ~Screen() = default;
+
+    virtual void onAction(Action a) = 0;
+    virtual bool typing() const { return false; }               // takes letters typed on a keyboard
+    virtual void onText(const std::string&) {}
+    virtual void render(Ui& ui) = 0;
+    virtual Header header() const { return {}; }
+    virtual Hints hints() const { return {}; }
+    virtual bool overlay() const { return false; }   // drawn over the screen below, which keeps the top bar
+    virtual bool animating() const { return false; } // wants the next frame right away
+    virtual Uint32 wakeAt() const { return 0; }      // when it next needs a frame without input (0: never)
+    virtual void tick(Uint32) {}                     // before each frame
+    virtual void levelsChanged() {}                  // a hotkey changed the volume, brightness or audio output
+    virtual bool raw() const { return false; }       // gets the SDL events themselves (onEvent), not actions
+    virtual void onEvent(const SDL_Event&) {}
+
+protected:
+    App& app;
+};
+
+class App {
+public:
+    App(Ui& ui, SDL_GameController* pad);
+
+    void push(std::unique_ptr<Screen> screen);
+    void pop();                                 // the top screen, destroyed once the event is handled
+    void notice(const std::string& text);       // a short message over the footer
+    void quit() { running = false; }
+    void topBarChanged();                       // its items, the clock's format, 12/24 hours or time zone
+    void audioChanged();                        // the top bar reads the mixer again
+    SDL_GameController* gamepad() const { return pad; }
+    bool onTop(const Screen* s) const { return !stack.empty() && stack.back().get() == s; }
+    void redraw() { dirty = true; }             // a screen's picture changed without input (a trailer's frame)
+    Ui& painter() { return ui; }
+    int run();
+
+private:
+    Ui& ui;
+    SDL_GameController* pad;
+    Input input;
+    std::vector<std::unique_ptr<Screen>> stack, closed;
+    bool running = true;
+    bool dirty = true;
+    Audio audio;
+    HudSettings hud;            // what the top bar shows (System Settings -> Overlay)
+    std::string clockFmt;       // strftime format of its clock
+    TopBar bar;                 // as last drawn
+    Uint32 sensorsDue = 0;      // when its battery and temperatures are read again
+    bool following = false;     // after a volume, brightness or output hotkey, which change the levels behind our back
+    Uint32 jackEvent = 0;       // the SDL event of a plug going in or out, 0 without a jack
+    Uint32 powerEvent = 0;      // the SDL event of a power supply changing, 0 without uevents
+    Uint32 followUntil = 0, followNextRead = 0;
+    Uint32 osdEvent = (Uint32)-1;   // the HUD's panel was written (system/osd.h)
+    Uint32 panelUntil = 0;          // then one more frame takes it away
+    std::string noticeText;
+    Uint32 noticeUntil = 0;
+    Uint32 lastActivity = 0;
+
+    TopBar readTopBar(bool sensors) const;
+    void render();
+    void follow();
+};
