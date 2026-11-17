@@ -56,26 +56,4 @@ Flash the compressed image to your SD card:
 
 ```bash
 zstd -d -c goodluckOSNext.img.zst | sudo dd of=/dev/sdX bs=4M status=progress
-```
-
-Replace `/dev/sdX` with your SD card device.
-
-## Build
-
-Requires Docker. See `BUILD.md`.
-
----
-
-## Awesome goodluckOS
-
-| Resource | Description | Link |
-|----------|-------------|------|
-| goodluckOS README | Official project documentation | https://github.com/CodeZombie/goodluckOS/blob/main/README.md |
-| goodluckOS-mali-driver README | Mali-400 driver and ports documentation | https://github.com/nyakaspeter/goodluckOS-mali-driver/blob/main/README.md |
-| ga36.genserek.net | Ports and apps for goodluckOS | https://ga36.genserek.net/ |
-
----
-
-> This is a personal fork. No warranty. Use at your own risk. Not affiliated with the official goodluckOS project.
-EOF
 echo "README overwritten in English with awesome goodluckOS section"
